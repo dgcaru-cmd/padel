@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - copilot/create-website-landing-page
   workflow_dispatch:
 
 permissions:
