@@ -269,7 +269,7 @@
         <div class="points-num t2" id="points2">0</div>
       </div>
     </div>
-    <div class="deuce-banner" id="deuceBanner">⚡ DEUCE ⚡</div>
+    <div class="deuce-banner" id="deuceBanner">⚡ EMPATE ⚡</div>
     <div class="score-sep"></div>
     <div class="score-row">
       <div class="score-cell">
@@ -400,9 +400,9 @@ function updateDisplay() {
   const banner = document.getElementById('deuceBanner');
   if (s.deuce) {
     banner.classList.add('show');
-    if (s.advantage===1)      { banner.textContent=`⚡ VENTAJA ${s.t1.toUpperCase()} ⚡`; document.getElementById('points1').textContent='VEN'; document.getElementById('points2').textContent='—'; }
-    else if (s.advantage===2) { banner.textContent=`⚡ VENTAJA ${s.t2.toUpperCase()} ⚡`; document.getElementById('points1').textContent='—';   document.getElementById('points2').textContent='VEN'; }
-    else                      { banner.textContent='⚡ DEUCE ⚡'; document.getElementById('points1').textContent='40'; document.getElementById('points2').textContent='40'; }
+    banner.textContent='⚡ EMPATE — PUNTO DE ORO ⚡';
+    document.getElementById('points1').textContent='40';
+    document.getElementById('points2').textContent='40';
   } else {
     banner.classList.remove('show');
     document.getElementById('points1').textContent = POINTS_MAP[s.points[0]] ?? '0';
@@ -431,13 +431,12 @@ function addPoint(team) {
   const idx = team-1, opp = 1-idx, s = state;
   s.totalPoints[idx]++;
   if (s.deuce) {
-    if (s.advantage===0)         s.advantage = team;
-    else if (s.advantage===team) winGame(team);
-    else                         s.advantage = 0;
+    // Punto de oro: gana directamente
+    winGame(team);
   } else {
     if      (s.points[idx]===3 && s.points[opp]<3)  winGame(team);
     else if (s.points[idx]===2 && s.points[opp]===3) { s.points[idx]++; s.deuce=true; s.advantage=0; }
-    else if (s.points[idx]===3 && s.points[opp]===3) { s.deuce=true; s.advantage=team; }
+    else if (s.points[idx]===3 && s.points[opp]===3) { s.deuce=true; s.advantage=0; }
     else                                              s.points[idx]++;
   }
   updateDisplay();
@@ -610,9 +609,7 @@ function narratePoint(team, s) {
   const p1str = POINTS_MAP[s.points[0]] ?? '0';
   const p2str = POINTS_MAP[s.points[1]] ?? '0';
   if (s.deuce) {
-    if (s.advantage===team)      narrate('¡Ventaja ' + tName + '!');
-    else if (s.advantage===0)    narrate('¡Deuce!');
-    else                         narrate('¡Ventaja ' + (team===1?s.t2:s.t1) + '!');
+    narrate('¡Empate! Punto de oro');
   } else {
     narrate('Punto para ' + tName + '. ' + p1str + ', ' + p2str);
   }
