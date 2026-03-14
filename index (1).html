@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<title>PádelScore</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --accent1: #00e5ff;
+    --accent2: #ff3d6b;
+    --gold: #ffd600;
+    --text: #f0f0ff;
+    --muted: #555570;
+    --green: #00e676;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+    z-index: 1;
+    overflow-y: auto;
+    padding: 16px 18px 32px;
+  }
+  .screen.active { opacity: 1; pointer-events: all; }
+
+  /* SETUP */
+  .setup-inner { width: 100%; max-width: 380px; display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 12px; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 50px; letter-spacing: 4px; background: linear-gradient(135deg, var(--accent1), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; }
+  .logo-sub { font-size: 11px; letter-spacing: 6px; text-transform: uppercase; color: var(--muted); text-align: center; }
+  .section-card { width: 100%; background: var(--surface); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .section-title { font-size: 10px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .section-title.t1 { color: var(--accent1); }
+  .section-title.t2 { color: var(--accent2); }
+  .section-title.gold { color: var(--gold); }
+  .input-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; display: block; color: var(--muted); }
+  .team-input { width: 100%; background: var(--surface2); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; color: var(--text); outline: none; transition: border-color 0.2s; }
+  .team-input.big { font-size: 17px; padding: 13px 14px; }
+  .team-input:focus { border-color: var(--accent1); }
+  .team-input.t2:focus { border-color: var(--accent2); }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .operator-btn { background: var(--surface2); border: 2px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: all 0.2s; color: var(--text); width: 100%; }
+  .operator-btn.sel-t1 { border-color: var(--accent1); background: rgba(0,229,255,0.08); box-shadow: 0 0 16px rgba(0,229,255,0.15); }
+  .operator-btn.sel-t2 { border-color: var(--accent2); background: rgba(255,61,107,0.08); box-shadow: 0 0 16px rgba(255,61,107,0.15); }
+  .op-tag { font-size: 10px; font-weight: 700; letter-spacing: 2px; }
+  .op-name { font-size: 13px; font-weight: 600; }
+  .btn-start { width: 100%; padding: 18px; background: linear-gradient(135deg, var(--accent1), #0090aa); border: none; border-radius: var(--radius); font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: #000; cursor: pointer; transition: transform 0.15s, opacity 0.15s; }
+  .btn-start:active { transform: scale(0.97); opacity: 0.9; }
+
+  /* GAME */
+  #gameScreen { padding: 8px 14px 16px; gap: 8px; }
+  .bt-bar { width: 100%; max-width: 420px; display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 12px; padding: 8px 14px; }
+  .bt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background 0.3s; flex-shrink: 0; }
+  .bt-dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .bt-status { font-size: 11px; color: var(--muted); flex: 1; }
+  .btn-bt { background: rgba(92,107,192,0.3); border: 1px solid rgba(92,107,192,0.5); border-radius: 8px; padding: 5px 11px; font-size: 11px; font-weight: 700; color: #8c9eff; cursor: pointer; white-space: nowrap; }
+  .set-info { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+  .sets-board { width: 100%; max-width: 420px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+  .sets-team { padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .sets-team.t1 { border-right: 1px solid rgba(255,255,255,0.05); }
+  .sets-name { font-size: 12px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+  .sets-name.t1 { color: var(--accent1); }
+  .sets-name.t2 { color: var(--accent2); text-align: right; }
+  .sets-players { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+  .sets-players.t2 { text-align: right; }
+  .sets-dots { display: flex; gap: 4px; margin-top: 3px; }
+  .sets-dots.t2 { justify-content: flex-end; }
+  .set-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted); transition: all 0.2s; }
+  .set-dot.won { border-color: transparent; }
+  .set-dot.won.t1 { background: var(--accent1); box-shadow: 0 0 6px var(--accent1); }
+  .set-dot.won.t2 { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+  .sets-mid { padding: 0 10px; color: var(--muted); font-size: 11px; }
+  .scoreboard { width: 100%; max-width: 420px; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+  .score-row { display: grid; grid-template-columns: 1fr 56px 1fr; align-items: center; }
+  .score-cell { padding: 6px 12px; display: flex; flex-direction: column; align-items: center; }
+  .score-label { font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+  .score-divider { color: var(--muted); font-size: 16px; text-align: center; }
+  .points-num { font-family: 'Bebas Neue', sans-serif; font-size: 82px; line-height: 1; transition: transform 0.15s ease; min-width: 80px; text-align: center; }
+  .points-num.t1 { color: var(--green); }
+  .points-num.t2 { color: var(--green); }
+  .points-num.pop { transform: scale(1.15); }
+  .games-num { font-family: 'Bebas Neue', sans-serif; font-size: 38px; line-height: 1; transition: transform 0.15s ease, color 0.2s; }
+  .games-num.t1 { color: var(--accent1); }
+  .games-num.t2 { color: var(--accent2); }
+  .games-num.pop { transform: scale(1.2); }
+  .score-sep { background: rgba(255,255,255,0.04); height: 1px; }
+  .deuce-banner { background: linear-gradient(90deg, rgba(255,214,0,0.15), rgba(255,214,0,0.05)); border-top: 1px solid rgba(255,214,0,0.2); padding: 6px; text-align: center; font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 4px; color: var(--gold); display: none; }
+  .deuce-banner.show { display: block; }
+  .action-row { width: 100%; max-width: 420px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-point { padding: 14px 10px; border: none; border-radius: var(--radius); font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; cursor: pointer; transition: transform 0.1s; display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; overflow: hidden; }
+  .btn-point::after { content: ''; position: absolute; inset: 0; background: white; opacity: 0; transition: opacity 0.1s; }
+  .btn-point:active::after { opacity: 0.1; }
+  .btn-point:active { transform: scale(0.96); }
+  .btn-action { font-size: 16px; }
+  .btn-team   { font-size: 11px; opacity: 0.8; }
+  .btn-players { font-size: 10px; opacity: 0.5; font-family: 'DM Sans', sans-serif; font-weight: 600; letter-spacing: 0; }
+  .btn-my  { background: linear-gradient(145deg, #003d6b, #005a9e); color: var(--accent1); border: 1px solid rgba(0,229,255,0.2); }
+  .btn-opp { background: linear-gradient(145deg, #5a0022, #8b0038); color: var(--accent2); border: 1px solid rgba(255,61,107,0.2); }
+  .util-row { width: 100%; max-width: 420px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-util { padding: 12px; background: var(--surface); border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+  .btn-util:active { transform: scale(0.97); }
+  .btn-undo { color: #80cbc4; }
+  .btn-reset { color: #ff8a65; }
+
+  /* WINNER */
+  #winnerScreen { justify-content: center; gap: 14px; }
+  .winner-glow { position: absolute; width: 280px; height: 280px; background: radial-gradient(circle, rgba(255,214,0,0.15) 0%, transparent 70%); border-radius: 50%; pointer-events: none; }
+  .trophy { font-size: 70px; animation: bounce 1s ease infinite alternate; }
+  @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-10px); } }
+  .winner-label { font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 8px; color: var(--gold); }
+  .winner-name { font-family: 'Bebas Neue', sans-serif; font-size: 42px; letter-spacing: 3px; text-align: center; background: linear-gradient(135deg, #fff, var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .winner-players { font-size: 13px; color: var(--muted); }
+  .winner-sets { font-size: 16px; color: var(--muted); letter-spacing: 2px; }
+  .winner-stats { display: flex; gap: 0; background: var(--surface); border-radius: var(--radius); overflow: hidden; width: 100%; max-width: 340px; }
+  .stat-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 14px 10px; }
+  .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 34px; line-height: 1; }
+  .stat-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .stat-name { font-size: 11px; font-weight: 600; }
+  .stat-sep { width: 1px; background: rgba(255,255,255,0.06); }
+  .btn-newmatch { padding: 17px 40px; background: linear-gradient(135deg, var(--accent2), #cc0033); border: none; border-radius: var(--radius); font-family: 'Bebas Neue', sans-serif; font-size: 21px; letter-spacing: 3px; color: white; cursor: pointer; transition: transform 0.15s; }
+  .btn-newmatch:active { transform: scale(0.97); }
+
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 11px 22px; font-size: 13px; font-weight: 500; z-index: 100; transition: transform 0.3s ease; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div class="screen active" id="setupScreen">
+  <div class="setup-inner">
+    <div style="text-align:center; margin-bottom:2px">
+      <div class="logo">PÁDEL</div>
+      <div class="logo" style="margin-top:-16px">SCORE</div>
+      <div class="logo-sub">Marcador de partido</div>
+    </div>
+
+    <!-- Equipo 1 -->
+    <div class="section-card">
+      <div class="section-title t1">⬡ Equipo 1</div>
+      <div>
+        <label class="input-label">Nombre del equipo</label>
+        <input class="team-input big" id="inp1" placeholder="Ej: Los Cracks" maxlength="20" oninput="syncOpLabels()">
+      </div>
+      <div class="two-col">
+        <div>
+          <label class="input-label">Jugador A</label>
+          <input class="team-input" id="inp1p1" placeholder="Nombre" maxlength="16" oninput="syncOpLabels()">
+        </div>
+        <div>
+          <label class="input-label">Jugador B</label>
+          <input class="team-input" id="inp1p2" placeholder="Nombre" maxlength="16">
+        </div>
+      </div>
+    </div>
+
+    <!-- Equipo 2 -->
+    <div class="section-card">
+      <div class="section-title t2">⬡ Equipo 2</div>
+      <div>
+        <label class="input-label">Nombre del equipo</label>
+        <input class="team-input t2 big" id="inp2" placeholder="Ej: Los Rivales" maxlength="20" oninput="syncOpLabels()">
+      </div>
+      <div class="two-col">
+        <div>
+          <label class="input-label">Jugador A</label>
+          <input class="team-input t2" id="inp2p1" placeholder="Nombre" maxlength="16" oninput="syncOpLabels()">
+        </div>
+        <div>
+          <label class="input-label">Jugador B</label>
+          <input class="team-input t2" id="inp2p2" placeholder="Nombre" maxlength="16">
+        </div>
+      </div>
+    </div>
+
+    <!-- Quién opera -->
+    <div class="section-card">
+      <div class="section-title gold">📱 ¿Quién opera este teléfono?</div>
+      <div class="two-col">
+        <button class="operator-btn sel-t1" id="opBtn1" onclick="selectOperator(1)">
+          <span class="op-tag" style="color:var(--accent1)">EQUIPO 1</span>
+          <span class="op-name" id="opLabel1">Los Cracks</span>
+        </button>
+        <button class="operator-btn" id="opBtn2" onclick="selectOperator(2)">
+          <span class="op-tag" style="color:var(--accent2)">EQUIPO 2</span>
+          <span class="op-name" id="opLabel2">Los Rivales</span>
+        </button>
+      </div>
+    </div>
+
+    <button class="btn-start" onclick="startGame()">EMPEZAR PARTIDO →</button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div class="screen" id="gameScreen">
+  <div class="bt-bar">
+    <div class="bt-dot" id="btDot"></div>
+    <span class="bt-status" id="btStatus">Botón BT no conectado</span>
+    <button class="btn-bt" onclick="connectBluetooth()">Conectar BT</button>
+  </div>
+
+  <div class="set-info" id="setInfo">SET 1 DE 3</div>
+
+  <div class="sets-board">
+    <div class="sets-team t1">
+      <div class="sets-name t1" id="setsName1">Equipo 1</div>
+      <div class="sets-players" id="setsPlayers1"></div>
+      <div class="sets-dots" id="setsDots1">
+        <div class="set-dot"></div><div class="set-dot"></div>
+      </div>
+    </div>
+    <div class="sets-mid">sets</div>
+    <div class="sets-team" style="align-items:flex-end">
+      <div class="sets-name t2" id="setsName2">Equipo 2</div>
+      <div class="sets-players t2" id="setsPlayers2"></div>
+      <div class="sets-dots t2" id="setsDots2">
+        <div class="set-dot"></div><div class="set-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scoreboard">
+    <div class="score-row">
+      <div class="score-cell">
+        <div class="score-label">Puntos</div>
+        <div class="points-num t1" id="points1">0</div>
+      </div>
+      <div class="score-divider" style="font-size:12px">pts</div>
+      <div class="score-cell">
+        <div class="score-label">Puntos</div>
+        <div class="points-num t2" id="points2">0</div>
+      </div>
+    </div>
+    <div class="deuce-banner" id="deuceBanner">⚡ DEUCE ⚡</div>
+    <div class="score-sep"></div>
+    <div class="score-row">
+      <div class="score-cell">
+        <div class="score-label">Juegos</div>
+        <div class="games-num t1" id="games1">0</div>
+      </div>
+      <div class="score-divider">—</div>
+      <div class="score-cell">
+        <div class="score-label">Juegos</div>
+        <div class="games-num t2" id="games2">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-row">
+    <button class="btn-point btn-my" onclick="addPointMy()">
+      <span class="btn-action">+ 1 PUNTO</span>
+      <span class="btn-team" id="btnMyTeam">MI EQUIPO</span>
+      <span class="btn-players" id="btnMyPlayers"></span>
+    </button>
+    <button class="btn-point btn-opp" onclick="addPointOpp()">
+      <span class="btn-action">+ 1 PUNTO</span>
+      <span class="btn-team" id="btnOppTeam">RIVAL</span>
+      <span class="btn-players" id="btnOppPlayers"></span>
+    </button>
+  </div>
+
+  <div class="util-row">
+    <button class="btn-util btn-undo" onclick="undo()">↩ Deshacer</button>
+    <button class="btn-util btn-reset" onclick="resetMatch()">🔄 Reiniciar</button>
+  </div>
+</div>
+
+<!-- WINNER SCREEN -->
+<div class="screen" id="winnerScreen">
+  <div class="winner-glow"></div>
+  <div class="trophy">🏆</div>
+  <div class="winner-label">Ganador del partido</div>
+  <div class="winner-name" id="winnerName">Equipo 1</div>
+  <div class="winner-players" id="winnerPlayers"></div>
+  <div class="winner-sets" id="winnerScore">Sets 2 — 0</div>
+
+  <div class="winner-stats">
+    <div class="stat-col">
+      <div class="stat-num" id="statPts1" style="color:var(--accent1)">0</div>
+      <div class="stat-label">puntos totales</div>
+      <div class="stat-name" id="statName1" style="color:var(--accent1)">Equipo 1</div>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-col">
+      <div class="stat-num" id="statPts2" style="color:var(--accent2)">0</div>
+      <div class="stat-label">puntos totales</div>
+      <div class="stat-name" id="statName2" style="color:var(--accent2)">Equipo 2</div>
+    </div>
+  </div>
+
+  <button class="btn-newmatch" onclick="newMatch()">NUEVO PARTIDO</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const POINTS_MAP = ['0','15','30','40'];
+let state = {}, prev = null, operatorTeam = 1;
+let btDevice = null, btChar = null, btClickCount = 0, btClickTimer = null;
+
+function initState(t1, t2, p1a, p1b, p2a, p2b) {
+  return { t1, t2, p1a, p1b, p2a, p2b, points:[0,0], games:[0,0], sets:[0,0], totalPoints:[0,0], currentSet:1, deuce:false, advantage:0 };
+}
+
+function syncOpLabels() {
+  const n1 = document.getElementById('inp1').value.trim() || 'Equipo 1';
+  const n2 = document.getElementById('inp2').value.trim() || 'Equipo 2';
+  const p1 = document.getElementById('inp1p1').value.trim();
+  const p2 = document.getElementById('inp2p1').value.trim();
+  document.getElementById('opLabel1').textContent = p1 || n1;
+  document.getElementById('opLabel2').textContent = p2 || n2;
+}
+
+function selectOperator(team) {
+  operatorTeam = team;
+  document.getElementById('opBtn1').className = 'operator-btn' + (team===1 ? ' sel-t1' : '');
+  document.getElementById('opBtn2').className = 'operator-btn' + (team===2 ? ' sel-t2' : '');
+}
+selectOperator(1);
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startGame() {
+  const t1  = document.getElementById('inp1').value.trim()   || 'Equipo 1';
+  const t2  = document.getElementById('inp2').value.trim()   || 'Equipo 2';
+  const p1a = document.getElementById('inp1p1').value.trim() || '';
+  const p1b = document.getElementById('inp1p2').value.trim() || '';
+  const p2a = document.getElementById('inp2p1').value.trim() || '';
+  const p2b = document.getElementById('inp2p2').value.trim() || '';
+  state = initState(t1, t2, p1a, p1b, p2a, p2b);
+  prev = null;
+  updateDisplay();
+  showScreen('gameScreen');
+}
+
+function pStr(a, b) { return (a && b) ? `${a} & ${b}` : (a || ''); }
+
+function updateDisplay() {
+  const s = state;
+  const myIdx  = operatorTeam - 1;
+  const oppIdx = 1 - myIdx;
+  const teams  = [s.t1, s.t2];
+  const playerStrs = [pStr(s.p1a, s.p1b), pStr(s.p2a, s.p2b)];
+
+  document.getElementById('setsName1').textContent    = s.t1;
+  document.getElementById('setsName2').textContent    = s.t2;
+  document.getElementById('setsPlayers1').textContent = playerStrs[0];
+  document.getElementById('setsPlayers2').textContent = playerStrs[1];
+  document.getElementById('setInfo').textContent      = `SET ${s.currentSet} DE 3`;
+
+  animNum('games1', s.games[0]);
+  animNum('games2', s.games[1]);
+
+  document.getElementById('btnMyTeam').textContent    = teams[myIdx].toUpperCase().substring(0,14);
+  document.getElementById('btnMyPlayers').textContent = playerStrs[myIdx];
+  document.getElementById('btnOppTeam').textContent   = teams[oppIdx].toUpperCase().substring(0,14);
+  document.getElementById('btnOppPlayers').textContent= playerStrs[oppIdx];
+
+  const banner = document.getElementById('deuceBanner');
+  if (s.deuce) {
+    banner.classList.add('show');
+    if (s.advantage===1)      { banner.textContent=`⚡ VENTAJA ${s.t1.toUpperCase()} ⚡`; document.getElementById('points1').textContent='VEN'; document.getElementById('points2').textContent='—'; }
+    else if (s.advantage===2) { banner.textContent=`⚡ VENTAJA ${s.t2.toUpperCase()} ⚡`; document.getElementById('points1').textContent='—';   document.getElementById('points2').textContent='VEN'; }
+    else                      { banner.textContent='⚡ DEUCE ⚡'; document.getElementById('points1').textContent='40'; document.getElementById('points2').textContent='40'; }
+  } else {
+    banner.classList.remove('show');
+    document.getElementById('points1').textContent = POINTS_MAP[s.points[0]] ?? '0';
+    document.getElementById('points2').textContent = POINTS_MAP[s.points[1]] ?? '0';
+  }
+  updateSetDots('setsDots1', s.sets[0], 't1');
+  updateSetDots('setsDots2', s.sets[1], 't2');
+}
+
+function animNum(id, val) {
+  const el = document.getElementById(id);
+  if (el.textContent !== String(val)) { el.textContent = val; el.classList.add('pop'); setTimeout(() => el.classList.remove('pop'), 200); }
+}
+
+function updateSetDots(cid, won, cls) {
+  document.getElementById(cid).querySelectorAll('.set-dot').forEach((d,i) => {
+    d.className = 'set-dot' + (i < won ? ` won ${cls}` : '');
+  });
+}
+
+function addPointMy()  { addPoint(operatorTeam); }
+function addPointOpp() { addPoint(operatorTeam===1 ? 2 : 1); }
+
+function addPoint(team) {
+  prev = JSON.parse(JSON.stringify(state));
+  const idx = team-1, opp = 1-idx, s = state;
+  s.totalPoints[idx]++;
+  if (s.deuce) {
+    if (s.advantage===0)         s.advantage = team;
+    else if (s.advantage===team) winGame(team);
+    else                         s.advantage = 0;
+  } else {
+    if      (s.points[idx]===3 && s.points[opp]<3)  winGame(team);
+    else if (s.points[idx]===2 && s.points[opp]===3) { s.points[idx]++; s.deuce=true; s.advantage=0; }
+    else if (s.points[idx]===3 && s.points[opp]===3) { s.deuce=true; s.advantage=team; }
+    else                                              s.points[idx]++;
+  }
+  updateDisplay();
+  vibrate(30);
+}
+
+function winGame(team) {
+  const idx = team-1;
+  state.points=[0,0]; state.deuce=false; state.advantage=0;
+  state.games[idx]++;
+  checkSetWin(team);
+}
+
+function checkSetWin(team) {
+  const idx=team-1, opp=1-idx, g=state.games;
+  if (g[idx]>=6 && g[idx]-g[opp]>=2) winSet(team);
+}
+
+function winSet(team) {
+  const idx=team-1;
+  state.games=[0,0];
+  state.sets[idx]++;
+  if (state.sets[idx]>=2) showWinner(team);
+  else state.currentSet++;
+}
+
+function showWinner(team) {
+  const s=state, idx=team-1;
+  document.getElementById('winnerName').textContent    = idx===0 ? s.t1 : s.t2;
+  document.getElementById('winnerPlayers').textContent = pStr(idx===0?s.p1a:s.p2a, idx===0?s.p1b:s.p2b);
+  document.getElementById('winnerScore').textContent   = `Sets ${s.sets[0]} — ${s.sets[1]}`;
+  document.getElementById('statPts1').textContent      = s.totalPoints[0];
+  document.getElementById('statPts2').textContent      = s.totalPoints[1];
+  document.getElementById('statName1').textContent     = s.t1;
+  document.getElementById('statName2').textContent     = s.t2;
+  updateDisplay();
+  setTimeout(()=>showScreen('winnerScreen'), 300);
+  vibrate([100,50,100,50,200]);
+}
+
+function undo() {
+  if (!prev) { showToast('No hay nada que deshacer'); return; }
+  state=prev; prev=null; updateDisplay(); vibrate(20);
+}
+
+function resetMatch() {
+  if (confirm('¿Reiniciar el partido?')) {
+    state=initState(state.t1,state.t2,state.p1a,state.p1b,state.p2a,state.p2b);
+    prev=null; updateDisplay();
+  }
+}
+
+function newMatch() { showScreen('setupScreen'); }
+
+async function connectBluetooth() {
+  if (!navigator.bluetooth) { showToast('⚠️ Usa Chrome en Android para BT'); return; }
+  try {
+    showToast('Buscando dispositivos...');
+    btDevice = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices:['battery_service','0000ffe0-0000-1000-8000-00805f9b34fb','generic_access','device_information']
+    });
+    btDevice.addEventListener('gattserverdisconnected', onBTDisconnected);
+    const server = await btDevice.gatt.connect();
+    document.getElementById('btDot').classList.add('connected');
+    document.getElementById('btStatus').textContent = `✓ ${btDevice.name||'Botón BT'} conectado`;
+    showToast(`✅ ${btDevice.name||'Botón BT'} conectado`);
+    try {
+      for (const svc of await server.getPrimaryServices()) {
+        for (const ch of await svc.getCharacteristics()) {
+          if (ch.properties.notify||ch.properties.indicate) {
+            btChar=ch; await ch.startNotifications();
+            ch.addEventListener('characteristicvaluechanged', ()=>registerBTClick());
+            break;
+          }
+        }
+        if (btChar) break;
+      }
+    } catch(e) { showToast('Modo teclas activado'); }
+  } catch(e) { if (e.name!=='NotFoundError') showToast('Error BT: '+e.message); }
+}
+
+function onBTDisconnected() {
+  document.getElementById('btDot').classList.remove('connected');
+  document.getElementById('btStatus').textContent='Botón BT desconectado';
+  btChar=null; showToast('Botón BT desconectado');
+}
+
+function registerBTClick() {
+  btClickCount++;
+  clearTimeout(btClickTimer);
+  btClickTimer = setTimeout(()=>{
+    const c=btClickCount; btClickCount=0;
+    if (document.getElementById('gameScreen').classList.contains('active')) {
+      if (c===1) addPointMy(); else if (c>=2) addPointOpp();
+    }
+  }, 400);
+}
+
+document.addEventListener('keydown', e=>{
+  if (!document.getElementById('gameScreen').classList.contains('active')) return;
+  if (e.key==='ArrowUp'||e.code==='VolumeUp'||e.keyCode===24)   { e.preventDefault(); registerBTClick(); }
+  if (e.key==='ArrowDown'||e.code==='VolumeDown'||e.keyCode===25) { e.preventDefault(); btClickCount+=2; clearTimeout(btClickTimer); btClickTimer=setTimeout(()=>{ addPointOpp(); btClickCount=0; },400); }
+});
+
+function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
+function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'),2800); }
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
