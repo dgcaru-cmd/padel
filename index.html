@@ -233,6 +233,7 @@
   <div class="bt-bar">
     <div class="bt-dot" id="btDot"></div>
     <span class="bt-status" id="btStatus">Botón BT no conectado</span>
+    <button class="btn-bt" id="btnNarrate" onclick="toggleNarration()" style="margin-right:4px">🔇 Narrar</button>
     <button class="btn-bt" onclick="connectBluetooth()">Conectar BT</button>
   </div>
 
@@ -441,13 +442,20 @@ function addPoint(team) {
   }
   updateDisplay();
   vibrate(30);
+  // Narrate point result
+  narratePoint(team, state);
 }
 
 function winGame(team) {
   const idx = team-1;
   state.points=[0,0]; state.deuce=false; state.advantage=0;
   state.games[idx]++;
+  const beforeSetWin = JSON.stringify(state.sets);
   checkSetWin(team);
+  // Only narrate game if set wasn't won (set/match has its own narration)
+  if (JSON.stringify(state.sets) === beforeSetWin) {
+    setTimeout(() => narrateGame(team, state), 100);
+  }
 }
 
 function checkSetWin(team) {
@@ -459,8 +467,12 @@ function winSet(team) {
   const idx=team-1;
   state.games=[0,0];
   state.sets[idx]++;
-  if (state.sets[idx]>=2) showWinner(team);
-  else state.currentSet++;
+  if (state.sets[idx]>=2) {
+    showWinner(team);
+  } else {
+    state.currentSet++;
+    setTimeout(() => narrateSet(team, state), 100);
+  }
 }
 
 function showWinner(team) {
@@ -474,6 +486,7 @@ function showWinner(team) {
   document.getElementById('statName2').textContent     = s.t2;
   updateDisplay();
   setTimeout(()=>showScreen('winnerScreen'), 300);
+  setTimeout(()=>narrateWinner(team, state), 800);
   vibrate([100,50,100,50,200]);
 }
 
@@ -545,6 +558,80 @@ document.addEventListener('keydown', e=>{
 function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
 function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'),2800); }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ── NARRACIÓN ──
+let narrateEnabled = false;
+let synth = window.speechSynthesis;
+let esVoice = null;
+
+function loadVoices() {
+  const voices = synth.getVoices();
+  esVoice = voices.find(v => v.lang.startsWith('es') && v.localService) ||
+            voices.find(v => v.lang.startsWith('es')) ||
+            voices[0] || null;
+}
+loadVoices();
+if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
+
+function toggleNarration() {
+  // Speech API requires a user gesture to activate — this click is perfect
+  if (!narrateEnabled) {
+    // Unlock audio with a silent utterance on first toggle
+    const unlock = new SpeechSynthesisUtterance('');
+    synth.speak(unlock);
+  }
+  narrateEnabled = !narrateEnabled;
+  const btn = document.getElementById('btnNarrate');
+  btn.textContent = narrateEnabled ? '🔊 Narrar' : '🔇 Narrar';
+  btn.style.color  = narrateEnabled ? '#00e676' : '#8c9eff';
+  btn.style.borderColor = narrateEnabled ? 'rgba(0,230,118,0.5)' : 'rgba(92,107,192,0.5)';
+  showToast(narrateEnabled ? '🎙️ Narración activada' : '🔇 Narración desactivada');
+}
+
+function narrate(text) {
+  if (!narrateEnabled || !synth) return;
+  synth.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang  = 'es-ES';
+  utt.rate  = 1.05;
+  utt.pitch = 1.1;
+  if (esVoice) utt.voice = esVoice;
+  synth.speak(utt);
+}
+
+// ── NARRATION CALLS (hook into game events) ──
+// These override the original functions to inject narration
+
+const _origAddPoint = addPoint;
+// We handle narration inside each event directly below instead
+
+function narratePoint(team, s) {
+  const tName = team===1 ? s.t1 : s.t2;
+  const p1str = POINTS_MAP[s.points[0]] ?? '0';
+  const p2str = POINTS_MAP[s.points[1]] ?? '0';
+  if (s.deuce) {
+    if (s.advantage===team)      narrate('¡Ventaja ' + tName + '!');
+    else if (s.advantage===0)    narrate('¡Deuce!');
+    else                         narrate('¡Ventaja ' + (team===1?s.t2:s.t1) + '!');
+  } else {
+    narrate('Punto para ' + tName + '. ' + p1str + ', ' + p2str);
+  }
+}
+
+function narrateGame(team, s) {
+  const tName = team===1 ? s.t1 : s.t2;
+  narrate('¡Juego para ' + tName + '! ' + s.games[0] + ' a ' + s.games[1]);
+}
+
+function narrateSet(team, s) {
+  const tName = team===1 ? s.t1 : s.t2;
+  narrate('¡Set para ' + tName + '! Van ' + s.sets[0] + ' sets a ' + s.sets[1]);
+}
+
+function narrateWinner(team, s) {
+  const tName = team===1 ? s.t1 : s.t2;
+  narrate('¡' + tName + ' gana el partido! ' + s.sets[0] + ' sets a ' + s.sets[1] + '. ¡Enhorabuena!');
+}
 </script>
 </body>
 </html>
